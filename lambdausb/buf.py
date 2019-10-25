@@ -475,4 +475,12 @@ class USBOutputBuffer(Elaboratable):
                     state_wp_data.buf1.level.eq(data_wp_addr.offset + 1)
                 ]
 
+        debug = platform.request("debug", 1)
+        m.d.comb += [
+            debug._0.o.eq(self.source_read.valid),
+            debug._1.o.eq(self.source_read.ready),
+            debug._2.o.eq(self.source_data.valid),
+            debug._3.o.eq(self.source_data.ready)
+        ]
+
         return m

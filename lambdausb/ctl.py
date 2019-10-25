@@ -276,4 +276,15 @@ class USBController(Elaboratable):
                 with m.If(self.phy.source.valid & self.phy.source.last):
                     m.next = "IDLE"
 
+        # debug = platform.request("debug", 1)
+        # m.d.comb += [
+        #     # debug._0.o.eq(self.phy.pins.p.oe),
+        #     debug._0.o.eq(self.phy.source.valid),
+        #     debug._1.o.eq(self.phy.source.last),
+        #     # debug._2.o.eq(self.phy.source.ready),
+        #     debug._2.o.eq(fsm.ongoing("RECEIVE-DATA-1")),
+        #     debug._3.o.eq(fsm.ongoing("RECEIVE-DATA-2")),
+        #     debug._4.o.eq(fsm.ongoing("FLUSH")),
+        # ]
+
         return m
