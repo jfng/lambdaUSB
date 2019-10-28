@@ -69,6 +69,53 @@ class NRZIDecoder(Elaboratable):
         return m
 
 
+class NRZIDecoder2(Elaboratable):
+    """
+    if the ctr_phase == period, shift a 1 in the shreg,
+    every time din != din_r, update the shreg offset with the number of period elapsed.
+    """
+    def __init__(self, period):
+        self.period = period
+
+        self.din    = Signal(2)
+        self.idle   = Signal()
+        self.source = stream.Endpoint([("data", 8)])
+
+    def elaborate(self, platform):
+        m = Module()
+
+        din_r = Signal.like(self.din)
+        m.d.sync += din_r.eq(self.din)
+
+        dout_shreg  = Signal(8 + 7)
+        dout_offset = Signal(log2_int(8))
+        dout_valid  = Signal()
+
+        ctr_phase = Signal(range(7*self.period), reset=7*self.period - 1)
+
+        with m.If(self.din == din_r):
+            with m.If(~dout_shreg[:6].all()):
+                with m.If(ctr_phase != 0):
+                    m.d.sync += ctr_phase.eq(ctr_phase - 1)
+                with m.Else():
+                    m.d.sync += ctr_phase.eq(ctr_phase.reset)
+                    m.d.sync += [
+                        dout_shreg.eq(Cat(C(1), dout_shreg)),
+                        dout_offset.eq(dout_offset + 1)
+                    ]
+            with m.Else():
+                # Assume we are in between two packets.
+                m.d.comb += self.idle.eq(1)
+        with m.Else():
+            m.d.sync += shreg.eq(Cat(C(0), shreg))
+            with m.If(~dout_shreg[:6].all()):
+                m.d.sync += Cat(dout_offset, dout_valid).eq(dout_shreg + 1)
+
+
+
+        return m
+
+
 class USBPHYRX(Elaboratable):
     def __init__(self, sync_freq):
         self.sync_freq = sync_freq

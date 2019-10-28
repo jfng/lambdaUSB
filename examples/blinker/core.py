@@ -5,13 +5,14 @@ from lambdausb.dev import USBDevice
 from lambdausb.lib import stream
 # from lambdausb.phy.ulpi import ULPIPhy
 from lambdausb.phy.usb import USBPHY
-from lambdausb.phy.rs232 import RS232PHY
+# from lambdausb.phy.rs232 import RS232PHY
 from lambdausb.protocol import Transfer
 
 
 class RgbBlinkerEndpoint(Elaboratable):
-    def __init__(self, rgb_led):
+    def __init__(self, rgb_led, clk_freq):
         self.rgb_led = rgb_led
+        self.clk_freq = clk_freq
         self.sink = stream.Endpoint([("data", 8)])
 
     def elaborate(self, platform):
@@ -24,8 +25,7 @@ class RgbBlinkerEndpoint(Elaboratable):
         with m.If(self.sink.valid):
             m.d.sync += sel.eq(self.sink.data[:3])
 
-        clk_freq = platform.default_clk_frequency
-        ctr = Signal(range(int(clk_freq//2)), reset=int(clk_freq//2)-1)
+        ctr = Signal(range(int(self.clk_freq//2)), reset=int(self.clk_freq//2)-1)
         with m.If(ctr == 0):
             m.d.sync += ctr.eq(ctr.reset)
             m.d.sync += led.eq(~led)
@@ -70,24 +70,25 @@ class USBBlinker(Elaboratable):
             ]
 
         usb_phy = m.submodules.usb_phy = USBPHY(usb_pins, 48e6)
-        usb_dev = m.submodules.usb_dev = USBDevice(usb_phy)
+        m.d.comb += usb_phy.source.connect(usb_phy.sink)
+        # usb_dev = m.submodules.usb_dev = USBDevice(usb_phy)
 
-        # Configuration endpoint
-        from config import descriptor_map, rom_init
-        cfg_ep  = m.submodules.cfg_ep = ConfigurationEndpoint(descriptor_map, rom_init)
-        cfg_in  = usb_dev.input_port(0x0, 64, Transfer.CONTROL)
-        cfg_out = usb_dev.output_port(0x0, 64, Transfer.CONTROL)
+        # # Configuration endpoint
+        # from config import descriptor_map, rom_init
+        # cfg_ep  = m.submodules.cfg_ep = ConfigurationEndpoint(descriptor_map, rom_init)
+        # cfg_in  = usb_dev.input_port(0x0, 64, Transfer.CONTROL)
+        # cfg_out = usb_dev.output_port(0x0, 64, Transfer.CONTROL)
 
-        m.d.comb += [
-            cfg_ep.source.connect(cfg_in),
-            cfg_out.connect(cfg_ep.sink)
-        ]
+        # m.d.comb += [
+        #     cfg_ep.source.connect(cfg_in),
+        #     cfg_out.connect(cfg_ep.sink)
+        # ]
 
         # RGB blinker endpoint
-        rgb_ep  = m.submodules.rgb_ep = RgbBlinkerEndpoint(platform.request("rgb_led", 0))
-        rgb_out = usb_dev.output_port(0x1, 512, Transfer.BULK)
+        # rgb_ep  = m.submodules.rgb_ep = RgbBlinkerEndpoint(platform.request("rgb_led", 0), 48e6)
+        # rgb_out = usb_dev.output_port(0x1, 512, Transfer.BULK)
 
-        m.d.comb += rgb_out.connect(rgb_ep.sink)
+        # m.d.comb += rgb_out.connect(rgb_ep.sink)
 
         return m
 
@@ -97,7 +98,7 @@ if __name__ == "__main__":
     # platform = USBSnifferPlatform()
 
     # from nmigen_boards.arty_a7 import ArtyA7Platform
-    from nmigen_boards.ice40_up5k_b_evn import ICE40UP5KBEVNPlatform
+    from lambdausb.boards.ice40_up5k_b_evn import ICE40UP5KBEVNPlatform
     from nmigen.build.dsl import *
     platform = ICE40UP5KBEVNPlatform()
     platform.add_resources([
@@ -124,11 +125,16 @@ if __name__ == "__main__":
         # ),
         Resource("usb", 0,
             # Subsignal("p", Pins("1", conn=("pmod", 1), dir="io"), Attrs(PULLUP="TRUE")),
-            Subsignal("p", Pins("10", conn=("j", 2), dir="io")),
-            Subsignal("n", Pins("12", conn=("j", 2), dir="io")),
+            Subsignal("p", Pins("20", conn=("j", 3), dir="io"), Attrs(PULLUP=1)),
+            Subsignal("n", Pins("18", conn=("j", 3), dir="io")),
             # Attrs(IOSTANDARD="LVCMOS33")
             Attrs(IO_STANDARD="LVCMOS33")
         ),
+        # Resource("usb", 1,
+        #     Subsignal("p", Pins("20", conn=("j", 3), dir="o")),
+        #     Subsignal("n", Pins("18", conn=("j", 3), dir="o")),
+        #     Attrs(IOSTANDARD="LVCMOS33")
+        # ),
         Resource("debug", 1,
             Subsignal("_0", Pins(" 7", conn=("j", 2), dir="o")),
             Subsignal("_1", Pins(" 9", conn=("j", 2), dir="o")),
@@ -137,11 +143,6 @@ if __name__ == "__main__":
             Subsignal("_4", Pins("15", conn=("j", 2), dir="o")),
             Attrs(IO_STANDARD="LVCMOS33")
         ),
-        # Resource("usb", 1,
-        #     Subsignal("p", Pins("1", conn=("pmod", 2), dir="io"), Attrs(PULLUP="TRUE")),
-        #     Subsignal("n", Pins("2", conn=("pmod", 2), dir="io")),
-        #     Attrs(IOSTANDARD="LVCMOS33")
-        # ),
         # Resource("debug", 0,
         #     Subsignal("_0", Pins("3", conn=("pmod", 2), dir="o")),
         #     Subsignal("_1", Pins("4", conn=("pmod", 2), dir="o")),

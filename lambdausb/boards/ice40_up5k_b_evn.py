@@ -3,7 +3,7 @@ import subprocess
 
 from nmigen.build import *
 from nmigen.vendor.lattice_ice40 import *
-from .resources import *
+from nmigen_boards.resources import * # FIXME
 
 
 __all__ = ["ICE40UP5KBEVNPlatform"]
@@ -27,12 +27,7 @@ class ICE40UP5KBEVNPlatform(LatticeICE40Platform):
             attrs=Attrs(IO_STANDARD="LVCMOS33")
         ),
 
-        UARTResource(0,
-            # rx="25", tx="23",
-            rx="36", tx="42",
-            attrs=Attrs(IO_STANDARD="LVCMOS33")
-        ),
-
+        # Only usable with J6 in PROG FLASH mode and J7 attached (see PCB silkscreen).
         *SPIFlashResources(0,
             cs="16", clk="15", mosi="14", miso="17",
             attrs=Attrs(IO_STANDARD="LVCMOS33")
@@ -40,19 +35,28 @@ class ICE40UP5KBEVNPlatform(LatticeICE40Platform):
     ]
     connectors  = [
         Connector("j", 2, # J2
-            "-  -  "
-            "23 -  "
-            "25 -  "
+            " -  - "
+            " -  - "
+            " -  - "
             "26 36 "
             "27 42 "
             "32 38 "
             "31 28 "
-            "37 35 " # 35 is clk12
-            "34 -  "
-            "43 -  "),
+            "37  - "
+            " -  - "
+            " -  - "),
+        Connector("j", 3, # J3
+            " - 12 "
+            " 4 21 "
+            " 3 13 "
+            "48 20 "
+            "45 19 "
+            "47 18 "
+            "44 11 "
+            "46 10 "
+            " 2  9 "
+            " -  6 "),
         # TODO
-        # Connector("j", 3, # J3
-        # ),
         # Connector("j", 52, # J52
         # ),
         # Connector("pmod", 0, # U6
