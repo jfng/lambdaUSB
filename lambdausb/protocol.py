@@ -1,7 +1,12 @@
 from enum import IntEnum
 
 
-__all__ = [ "Transfer", "Packet", "Token", "Data", "Handshake", "Special", "pid_from", "LineState"]
+__all__ = ["Direction", "Transfer", "Packet", "Token", "Data", "Handshake", "Special", "pid_from", "LineState"]
+
+
+class Direction(IntEnum):
+    INPUT  = 0
+    OUTPUT = 1
 
 
 class Transfer(IntEnum):

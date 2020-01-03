@@ -25,6 +25,8 @@ class RoundRobin(Elaboratable):
                             t = j % self.width
                             with m.If(self.request[t]):
                                 m.d.sync += self.grant.eq(t)
+                    with m.Case():
+                        m.d.sync += self.grant.eq(0)
 
         return m
 

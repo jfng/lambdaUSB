@@ -1,8 +1,8 @@
 from nmigen import *
+from nmigen.lib.cdc import FFSynchronizer # FIXME
 
 from .lib import stream
 from .crc import *
-from .buf import USBInputBuffer, USBOutputBuffer
 from .protocol import *
 
 
@@ -22,6 +22,7 @@ class USBController(Elaboratable):
         self.host_zlp     = Signal()
         self.read_xfer    = Signal(2)
         self.write_xfer   = Signal(2)
+        self.sof          = Signal()
 
     def elaborate(self, platform):
         m = Module()
@@ -96,6 +97,7 @@ class USBController(Elaboratable):
                             with m.Switch(rx_pid[2:4]):
                                 with m.Case(Token.SOF):
                                     m.d.sync += rx_frame_no.eq(Cat(rx_token_byte_0, self.phy.source.data[:3]))
+                                    m.d.comb += self.sof.eq(1)
                                     m.next = "IDLE"
                                 with m.Case(Token.OUT):
                                     m.d.sync += rx_setup.eq(0)
@@ -128,11 +130,14 @@ class USBController(Elaboratable):
                     self.source_write.valid.eq(1),
                     self.source_write.ep.eq(rx_ep)
                 ]
-                with m.If(self.source_write.ready):
+                with m.If(~self.source_write.ready):
+                    with m.If(self.write_xfer == Transfer.ISOCHRONOUS):
+                        m.next = "IDLE"
+                    with m.Else():
+                        m.next = "SEND-NAK"
+                with m.Else():
                     m.d.sync += rx_isochronous.eq(self.write_xfer == Transfer.ISOCHRONOUS)
                     m.next = "RECEIVE-DATA-1"
-                with m.Else():
-                    m.next = "SEND-NAK"
 
             with m.State("RECEIVE-DATA-1"):
                 m.d.comb += self.phy.source.ready.eq(self.source_data.ready)

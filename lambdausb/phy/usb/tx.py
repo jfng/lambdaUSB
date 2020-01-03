@@ -45,27 +45,28 @@ class NRZIEncoder(Elaboratable):
 
             with m.State("ENCODE"):
                 with m.If(tick):
-                    with m.If((ctr_bit == 1) & ~sink_last):
-                        m.d.sync += hold_line.eq(1)
-                        m.next = "IDLE"
                     with m.If(ctr_one == 0):
                         # We must insert a 0 for every six consecutive 1s.
                         m.d.sync += ctr_one.eq(ctr_one.reset)
                         m.d.sync += self.dout.eq(~self.dout)
-                    with m.Elif(ctr_bit != 0):
-                        with m.If(shreg[0] == 1):
-                            m.d.sync += ctr_one.eq(ctr_one - 1)
-                        with m.Else():
-                            m.d.sync += ctr_one.eq(ctr_one.reset)
-                            m.d.sync += self.dout.eq(~self.dout)
-                        m.d.sync += [
-                            shreg.eq(Cat(shreg[1:], 0)),
-                            ctr_bit.eq(ctr_bit - 1),
-                        ]
                     with m.Else():
-                        m.d.sync += hold_line.eq(0)
-                        m.d.sync += ctr_one.eq(ctr_one.reset)
-                        m.next = "IDLE"
+                        with m.If((ctr_bit == 1) & ~sink_last):
+                            m.d.sync += hold_line.eq(1)
+                            m.next = "IDLE"
+                        with m.If(ctr_bit != 0):
+                            with m.If(shreg[0] == 1):
+                                m.d.sync += ctr_one.eq(ctr_one - 1)
+                            with m.Else():
+                                m.d.sync += ctr_one.eq(ctr_one.reset)
+                                m.d.sync += self.dout.eq(~self.dout)
+                            m.d.sync += [
+                                shreg.eq(Cat(shreg[1:], 0)),
+                                ctr_bit.eq(ctr_bit - 1),
+                            ]
+                        with m.Else():
+                            m.d.sync += hold_line.eq(0)
+                            m.d.sync += ctr_one.eq(ctr_one.reset)
+                            m.next = "IDLE"
 
         m.d.comb += self.idle.eq(fsm.ongoing("IDLE"))
 

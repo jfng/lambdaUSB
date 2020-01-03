@@ -3,7 +3,7 @@ from nmigen.hdl.rec import *
 from nmigen.lib import fifo
 
 
-__all__ = ["Endpoint", "SyncFIFO", "AsyncFIFO"]
+__all__ = ["Endpoint", "SyncFIFO", "SyncFIFOBuffered", "AsyncFIFO"]
 
 
 def _make_fanout(layout):
@@ -96,6 +96,14 @@ class SyncFIFO(Elaboratable, _FIFOWrapper):
     def __init__(self, layout, depth, fwft=True):
         super().__init__(layout)
         self.fifo = fifo.SyncFIFO(width=len(Record(self.layout)), depth=depth, fwft=fwft)
+        self.depth = self.fifo.depth
+        self.level = self.fifo.level
+
+
+class SyncFIFOBuffered(Elaboratable, _FIFOWrapper):
+    def __init__(self, layout, depth):
+        super().__init__(layout)
+        self.fifo = fifo.SyncFIFOBuffered(width=len(Record(self.layout)), depth=depth)
         self.depth = self.fifo.depth
         self.level = self.fifo.level
 
