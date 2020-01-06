@@ -6,23 +6,54 @@ from .crc import *
 from .protocol import *
 
 
-__all__ = ["USBController"]
+__all__ = ["DeviceController"]
 
 
-class USBController(Elaboratable):
-    def __init__(self, phy):
-        self.phy          = phy
+class DeviceController(Elaboratable):
+    def __init__(self):
+        self.rx_stb    = Signal()
+        self.rx_lst    = Signal()
+        self.rx_data   = Signal(8)
+        self.rx_rdy    = Signal()
 
-        self.source_write = stream.Endpoint([("ep", 4)])
-        self.source_data  = stream.Endpoint([("setup", 1), ("data", 8), ("crc_ok", 1)])
-        self.sink_read    = stream.Endpoint([("ep", 4)])
-        self.sink_data    = stream.Endpoint([("empty", 1), ("data", 8)])
+        self.tx_stb    = Signal()
+        self.tx_lst    = Signal()
+        self.tx_data   = Signal(8)
+        self.tx_rdy    = Signal()
 
-        self.host_ack     = Signal()
-        self.host_zlp     = Signal()
-        self.read_xfer    = Signal(2)
-        self.write_xfer   = Signal(2)
-        self.sof          = Signal()
+        self.i_ep_addr = Signal(range(16))
+        self.i_ep_rdy  = Signal()
+        self.i_ep_stb  = Signal()
+        self.i_ep_xfer = Signal(2, decoder=Transfer)
+
+        self.i_stb     = Signal()
+        self.i_lst     = Signal()
+        self.i_data    = Signal(8)
+        self.i_zlp     = Signal()
+        self.i_rdy     = Signal()
+        self.i_ack     = Signal()
+
+        self.o_ep_addr = Signal(range(16))
+        self.o_ep_rdy  = Signal()
+        self.o_ep_stb  = Signal()
+        self.o_ep_xfer = Signal(2, decoder=Transfer)
+
+        self.o_stb     = Signal()
+        self.o_lst     = Signal()
+        self.o_data    = Signal(8)
+        # TODO
+
+
+        # self.source_write = stream.Endpoint([("ep", 4)])
+        # self.source_data  = stream.Endpoint([("setup", 1), ("data", 8), ("crc_ok", 1)])
+        # self.sink_read    = stream.Endpoint([("ep", 4)])
+        # self.sink_data    = stream.Endpoint([("empty", 1), ("data", 8)])
+
+        # self.host_ack     = Signal()
+        # self.host_zlp     = Signal()
+        # self.read_xfer    = Signal(2)
+        # self.write_xfer   = Signal(2)
+        # self.sof          = Signal()
 
     def elaborate(self, platform):
         m = Module()
