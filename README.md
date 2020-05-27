@@ -26,33 +26,35 @@ Download and install lambdaUSB:
 
 ```python
 m.submodules.ulpi_phy = ulpi_phy = ulpi.PHY(pins=platform.request("ulpi", 0))
-m.submodules.usb_dev  = usb_dev  = USBDevice(ulpi_phy)
+m.submodules.usb_dev  = usb_dev  = usb.Device()
+m.d.comb += [
+    ulpi_phy.rx.connect(usb_dev.rx),
+    usb_dev.tx.connect(ulpi_phy.tx),
+]
 ```
 
 For the moment, only ULPI transceivers such as the USB3300 are supported.
 
-2. Request endpoint ports:
+2. Instantiate endpoint interfaces:
 
 ```python
-ep1_in  = usb_dev.input_port(0x1, 512, Transfer.BULK)
-ep1_out = usb_dev.output_port(0x1, 512, Transfer.BULK)
+ep1_in  = usb.InputEndpoint(xfer=usb.Transfer.BULK, max_size=512)
+ep1_out = usb.OutputEndpoint(xfer=usb.Transfer.BULK, max_size=512)
 ```
 
-3. Connect the endpoint ports to your design:
+3. Add endpoint interfaces to the USB device:
 
 ```python
-m.d.comb += [
-  my_endpoint.source.connect(ep1_in),
-  ep1_out.connect(my_endpoint.sink)
-]
+usb_dev.add_endpoint(ep1_in,  addr=1, dir="i")
+usb_dev.add_endpoint(ep1_out, addr=1, dir="o")
 ```
 
 For a full example, have a look at `examples/blinker`.
 
 ### Device configuration
 
-For convenience, we provide a configuration endpoint at `lambdausb/cfg.py`.
-It stores the configuration descriptors in a ROM, and responds to host requests on endpoint 0.
+For convenience, we provide a `ConfigurationFSM` to manage EP0 in `lambdausb.usb.config`.
+It stores the configuration descriptors in a ROM, and responds to host requests.
 
 To use it, you must first generate a config file:
 ```
@@ -67,17 +69,12 @@ You will be presented a menuconfig interface from which you can setup your USB d
 The output `config.py` file can be imported and used like so:
 
 ```python
-from lambdausb.cfg import ConfigurationEndpoint
+from lambdausb.usb.config import ConfigurationFSM
 from config import descriptor_map, rom_init
 
-m.submodules.cfg_ep = cfg_ep = ConfigurationEndpoint(descriptor_map, rom_init)
-cfg_in  = usb_dev.input_port(0x0, 64, Transfer.CONTROL)
-cfg_out = usb_dev.output_port(0x0, 64, Transfer.CONTROL)
-
-m.d.comb += [
-    cfg_ep.source.connect(cfg_in),
-    cfg_out.connect(cfg_ep.sink)
-]
+m.submodules.cfg_fsm = cfg_fsm = ConfigurationFSM(descriptor_map, rom_init)
+usb_dev.add_endpoint(cfg_fsm.ep_in,  addr=0, dir="i")
+usb_dev.add_endpoint(cfg_fsm.ep_out, addr=0, dir="o")
 ```
 
 ### License
